@@ -47,7 +47,7 @@ jobs:
               repo: context.repo.repo,
               issue_number: prNumber,
               body: [
-                "> **Automated reply** from the issue bot.",
+                "> **Automated reply** from a bot.",
                 "",
                 "A modified strings.po file was detected.",
                 "",
@@ -55,7 +55,7 @@ jobs:
                 "",
                 "If you feel this PR was closed in error, please reply below.",
                 "",
-                "_This was posted automatically. A maintainer may follow up separately._"
+                "_This was posted automatically._"
               ].join("\n")
             });
 

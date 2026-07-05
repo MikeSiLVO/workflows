@@ -19,14 +19,14 @@ jobs:
           days-before-pr-stale: -1
           days-before-pr-close: -1
           stale-issue-message: |
-            > **Automated reply** from the issue bot.
+            > **Automated reply** from a bot.
 
             This issue is still missing the requested debug log and hasn't had a reply in a while. It'll be closed in 7 days if nothing's added. Just reply with the log to keep it open.
 
-            _This was posted automatically. A maintainer may follow up separately._
+            _This was posted automatically._
           close-issue-message: |
-            > **Automated reply** from the issue bot.
+            > **Automated reply** from a bot.
 
             Closing since no debug log was added. Add one any time and this can be reopened.
 
-            _This was posted automatically. A maintainer may follow up separately._
+            _This was posted automatically._

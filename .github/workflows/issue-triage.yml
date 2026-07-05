@@ -61,7 +61,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner, repo, issue_number: issue.number,
                 body: [
-                  "> **Automated reply** from the issue bot.",
+                  "> **Automated reply** from a bot.",
                   "",
                   "Thanks for the report. There's no debug log link in this issue yet.",
                   "",
@@ -69,7 +69,7 @@ jobs:
                   "",
                   "It's marked `needs-info` until then. If it stays that way with no response it'll be closed automatically after a couple of weeks. Just add the log to keep it open.",
                   "",
-                  "_This was posted automatically. A maintainer may follow up separately._"
+                  "_This was posted automatically._"
                 ].join("\n")
               });
             } else if (hasLog && hasNeedsInfo) {
@@ -79,11 +79,11 @@ jobs:
               await github.rest.issues.createComment({
                 owner, repo, issue_number: issue.number,
                 body: [
-                  "> **Automated reply** from the issue bot.",
+                  "> **Automated reply** from a bot.",
                   "",
                   "Log received, clearing `needs-info`. Thanks.",
                   "",
-                  "_This was posted automatically. A maintainer may follow up separately._"
+                  "_This was posted automatically._"
                 ].join("\n")
               });
             }
