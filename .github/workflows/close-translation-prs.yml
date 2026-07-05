@@ -46,12 +46,17 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
-              body: `A modified strings.po file was detected.
-
-            Translations are not accepted through PRs, please use Weblate if you'd like to contribute to the translations.
-
-            If you feel this PR was closed in error, please reply below.
-            Thank you for your interest in improving this add-on.`
+              body: [
+                "> **Automated reply** from the issue bot.",
+                "",
+                "A modified strings.po file was detected.",
+                "",
+                "Translations are not accepted through PRs, please use Weblate if you'd like to contribute to the translations.",
+                "",
+                "If you feel this PR was closed in error, please reply below.",
+                "",
+                "_This was posted automatically. A maintainer may follow up separately._"
+              ].join("\n")
             });
 
             await github.rest.pulls.update({

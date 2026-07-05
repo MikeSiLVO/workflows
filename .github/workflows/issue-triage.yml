@@ -81,7 +81,9 @@ jobs:
                 body: [
                   "> **Automated reply** from the issue bot.",
                   "",
-                  "Log received, clearing `needs-info`. Thanks."
+                  "Log received, clearing `needs-info`. Thanks.",
+                  "",
+                  "_This was posted automatically. A maintainer may follow up separately._"
                 ].join("\n")
               });
             }
