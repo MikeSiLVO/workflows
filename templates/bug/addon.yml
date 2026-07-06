@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in {{ADDON_NAME}} is broken or misbehaving
+description: "Something in {{ADDON_NAME}} is broken or misbehaving"
 labels: ["bug"]
 body:
   - type: markdown
@@ -25,7 +25,7 @@ body:
   - type: input
     id: addon-version
     attributes:
-      label: {{ADDON_NAME}} version
+      label: "{{ADDON_NAME}} version"
       placeholder: e.g. {{VERSION_EG}}
     validations:
       required: true

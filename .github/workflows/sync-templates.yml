@@ -58,14 +58,28 @@ jobs:
           VERSION_EG: ${{ matrix.target.version_eg }}
         run: |
           set -euo pipefail
-          rm -rf target/.github/ISSUE_TEMPLATE
-          mkdir -p target/.github/ISSUE_TEMPLATE
-          for f in templates/ISSUE_TEMPLATE/*.yml; do
+
+          # Skins declare the xbmc.gui.skin extension point; everything else is an add-on.
+          kind=addon
+          if grep -q 'point="xbmc.gui.skin"' target/addon.xml 2>/dev/null; then
+            kind=skin
+          fi
+          echo "Detected kind for ${{ matrix.target.repo }}: $kind"
+
+          render() {
             sed -e "s|{{ADDON_NAME}}|${ADDON_NAME}|g" \
                 -e "s|{{FORUM_TID}}|${FORUM_TID}|g" \
                 -e "s|{{VERSION_EG}}|${VERSION_EG}|g" \
-                "$f" > "target/.github/ISSUE_TEMPLATE/$(basename "$f")"
+                "$1"
+          }
+
+          dest="target/.github/ISSUE_TEMPLATE"
+          rm -rf "$dest"
+          mkdir -p "$dest"
+          for f in templates/common/*.yml; do
+            render "$f" > "$dest/$(basename "$f")"
           done
+          render "templates/bug/${kind}.yml" > "$dest/bug.yml"
           cd target
           git config user.name "MikeSiLVO"
           git config user.email "mikesilvo164@gmail.com"
