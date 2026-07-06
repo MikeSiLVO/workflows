@@ -20,7 +20,7 @@ jobs:
     outputs:
       targets: ${{ steps.set.outputs.targets }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: set
         env:
           ONLY: ${{ inputs.only }}
@@ -42,10 +42,10 @@ jobs:
         target: ${{ fromJSON(needs.matrix.outputs.targets) }}
     steps:
       - name: Checkout central (canonical templates)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Checkout target
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: MikeSiLVO/${{ matrix.target.repo }}
           token: ${{ secrets.SYNC_TOKEN }}
