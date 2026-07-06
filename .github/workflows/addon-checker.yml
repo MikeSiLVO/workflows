@@ -1,0 +1,33 @@
+name: Kodi addon-checker (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      kodi_branch:
+        description: 'Kodi branch to validate against (matrix, nexus, omega, ...)'
+        required: false
+        type: string
+        default: omega
+
+jobs:
+  addon-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install kodi-addon-checker
+        run: pip install kodi-addon-checker
+      - name: Run addon-checker
+        env:
+          BRANCH: ${{ inputs.kodi_branch }}
+        run: |
+          set -euo pipefail
+          # addon-checker expects the add-on in a folder named its id; the repo name
+          # isn't guaranteed to match, so stage a clean copy under the real id.
+          id=$(python3 -c "import xml.etree.ElementTree as ET; print(ET.parse('addon.xml').getroot().get('id'))")
+          work="$RUNNER_TEMP/check"
+          mkdir -p "$work/$id"
+          rsync -a --exclude='.git' --exclude='.github' ./ "$work/$id/"
+          kodi-addon-checker --branch="$BRANCH" "$work/$id"

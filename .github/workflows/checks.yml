@@ -1,10 +1,10 @@
-name: Type Check (reusable)
+name: Code checks (reusable)
 
 on:
   workflow_call:
 
 jobs:
-  pyright:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -12,6 +12,8 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install dependencies
-        run: pip install pyright kodistubs
-      - name: Run pyright
+        run: pip install pyright kodistubs ruff
+      - name: Ruff
+        run: ruff check .
+      - name: Pyright
         run: pyright
