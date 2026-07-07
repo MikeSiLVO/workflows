@@ -1,4 +1,5 @@
 [
   { "repo": "workflows-sandbox", "name": "Sandbox Add-on", "tid": "0", "version_eg": "1.0.0" },
-  { "repo": "script.skin.info.service", "name": "Skin Info Service", "tid": "384016", "version_eg": "2.0.0" }
+  { "repo": "script.skin.info.service", "name": "Skin Info Service", "tid": "384016", "version_eg": "2.0.0" },
+  { "repo": "script.skinshortcuts", "name": "Skin Shortcuts", "tid": "383314", "version_eg": "3.0.2" }
 ]
