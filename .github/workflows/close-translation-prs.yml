@@ -1,0 +1,67 @@
+name: Close Translation Pull Requests (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'PR number to check (manual dispatch path)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  close-translation-prs:
+    if: github.actor != 'weblate'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Check and close translation PRs
+        uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number ?? Number(process.env.PR_NUMBER);
+
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            const hasEnGb = files.some(f => f.filename.includes('en_gb/strings.po'));
+            const hasStrings = files.some(f => f.filename.includes('strings.po'));
+
+            // Allow if en_gb was modified (likely a valid source change) or no strings.po at all
+            if (hasEnGb || !hasStrings) {
+              console.log('Not a translation-only PR, allowing through');
+              return;
+            }
+
+            console.log('Translation PR detected, closing');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: [
+                "> **Automated reply** from a bot.",
+                "",
+                "A modified strings.po file was detected.",
+                "",
+                "Translations are not accepted through PRs, please use Weblate if you'd like to contribute to the translations.",
+                "",
+                "If you feel this PR was closed in error, please reply below.",
+                "",
+                "_This was posted automatically._"
+              ].join("\n")
+            });
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              state: 'closed'
+            });

@@ -1,0 +1,93 @@
+name: Sync issue templates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'templates/**'
+      - 'targets.json'
+      - '.github/workflows/sync-templates.yml'
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Limit to a single target repo (optional)'
+        required: false
+        type: string
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.set.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: set
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          if [ -n "$ONLY" ]; then
+            jq -c --arg r "$ONLY" '[.[] | select(.repo == $r)]' targets.json > out.json
+          else
+            jq -c '.' targets.json > out.json
+          fi
+          echo "targets=$(cat out.json)" >> "$GITHUB_OUTPUT"
+
+  sync:
+    needs: matrix
+    if: needs.matrix.outputs.targets != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.matrix.outputs.targets) }}
+    steps:
+      - name: Checkout central (canonical templates)
+        uses: actions/checkout@v7
+
+      - name: Checkout target
+        uses: actions/checkout@v7
+        with:
+          repository: MikeSiLVO/${{ matrix.target.repo }}
+          token: ${{ secrets.SYNC_TOKEN }}
+          path: target
+
+      - name: Render templates and push if changed
+        env:
+          ADDON_NAME: ${{ matrix.target.name }}
+          FORUM_TID: ${{ matrix.target.tid }}
+          VERSION_EG: ${{ matrix.target.version_eg }}
+        run: |
+          set -euo pipefail
+
+          # Skins declare the xbmc.gui.skin extension point; everything else is an add-on.
+          kind=addon
+          if grep -q 'point="xbmc.gui.skin"' target/addon.xml 2>/dev/null; then
+            kind=skin
+          fi
+          echo "Detected kind for ${{ matrix.target.repo }}: $kind"
+
+          render() {
+            sed -e "s|{{ADDON_NAME}}|${ADDON_NAME}|g" \
+                -e "s|{{FORUM_TID}}|${FORUM_TID}|g" \
+                -e "s|{{VERSION_EG}}|${VERSION_EG}|g" \
+                "$1"
+          }
+
+          dest="target/.github/ISSUE_TEMPLATE"
+          rm -rf "$dest"
+          mkdir -p "$dest"
+          for f in templates/common/*.yml; do
+            render "$f" > "$dest/$(basename "$f")"
+          done
+          render "templates/bug/${kind}.yml" > "$dest/bug.yml"
+          cd target
+          git config user.name "MikeSiLVO"
+          git config user.email "mikesilvo164@gmail.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "Sync issue templates from MikeSiLVO/workflows"
+            git push
+            echo "Pushed template update to ${{ matrix.target.repo }}"
+          else
+            echo "No changes for ${{ matrix.target.repo }}"
+          fi
