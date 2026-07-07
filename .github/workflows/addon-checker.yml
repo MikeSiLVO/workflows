@@ -29,5 +29,14 @@ jobs:
           id=$(python3 -c "import xml.etree.ElementTree as ET; print(ET.parse('addon.xml').getroot().get('id'))")
           work="$RUNNER_TEMP/check"
           mkdir -p "$work/$id"
-          rsync -a --exclude='.git' --exclude='.github' ./ "$work/$id/"
+          # Check the tree that actually ships: strip dev files, matching what releases/submits drop,
+          # so the checker sees what the Kodi repo would and doesn't warn on tooling files.
+          rsync -a \
+            --exclude='.git' --exclude='.github' --exclude='.gitignore' --exclude='.gitattributes' \
+            --exclude='.editorconfig' --exclude='.claude' --exclude='.vscode' --exclude='.idea' \
+            --exclude='.pylintrc' --exclude='pyrightconfig.json' --exclude='ruff.toml' --exclude='.ruff.toml' \
+            --exclude='pyproject.toml' --exclude='.pre-commit-config.yaml' \
+            --exclude='__pycache__' --exclude='.mypy_cache' --exclude='.ruff_cache' --exclude='.pytest_cache' \
+            --exclude='typings' --exclude='tests' --exclude='docs' --exclude='DOCS' --exclude='xbmcgui' \
+            ./ "$work/$id/"
           kodi-addon-checker --branch="$BRANCH" "$work/$id"
