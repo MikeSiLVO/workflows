@@ -73,6 +73,7 @@ jobs:
 - The `github.repository` guard stops forks from running it.
 - `secrets: inherit` passes the repo's own secrets, like `REPO_SILVO_PAT`, through.
 - Any needed permissions are set on the calling job in the stub.
+- The `checks` and `addon-checker` stubs add `paths-ignore: ['**/*.po', '**/*.pot']` so translation-only changes (Weblate updates, metadata sync) do not trigger them.
 
 ### Which stubs by kind
 
