@@ -2,6 +2,12 @@ name: Code checks (reusable)
 
 on:
   workflow_call:
+    inputs:
+      deps:
+        description: Extra pip packages so pyright can resolve third-party imports
+        required: false
+        type: string
+        default: ''
 
 jobs:
   checks:
@@ -12,7 +18,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install dependencies
-        run: pip install pyright kodistubs ruff
+        run: pip install pyright kodistubs ruff ${{ inputs.deps }}
       - name: Ruff
         run: ruff check .
       - name: Pyright
