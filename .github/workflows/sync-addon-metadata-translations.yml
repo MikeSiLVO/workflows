@@ -8,7 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -29,12 +28,15 @@ jobs:
         run: sync-addon-metadata-translations
         working-directory: ./project
 
-      - name: Create PR for sync changes
-        uses: peter-evans/create-pull-request@v8
-        with:
-          commit-message: Sync of addon metadata translations
-          title: Sync of addon metadata translations
-          body: Sync of addon metadata translations triggered by ${{ github.sha }}
-          branch: amt-sync
-          delete-branch: true
-          path: ./project
+      - name: Commit metadata sync
+        working-directory: ./project
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No metadata changes to sync."
+            exit 0
+          fi
+          git config user.name "MikeSiLVO"
+          git config user.email "mikesilvo164@gmail.com"
+          git add -A
+          git commit -m "Sync of addon metadata translations"
+          git push origin HEAD:main
