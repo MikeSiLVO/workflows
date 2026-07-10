@@ -1,0 +1,35 @@
+name: Needs Info Nudge (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      label:
+        description: 'Label whose addition triggers the nudge'
+        required: false
+        type: string
+        default: 'needs-info'
+      message:
+        description: 'Comment body posted when the label is added'
+        required: true
+        type: string
+
+jobs:
+  nudge:
+    if: >-
+      github.event.action == 'labeled'
+      && github.event.label.name == inputs.label
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v9
+        env:
+          BODY: ${{ inputs.message }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: process.env.BODY,
+            });
