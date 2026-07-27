@@ -1,0 +1,166 @@
+name: Lint canary
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout central
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - name: Run consumers against unpinned linters
+        id: canary
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          pip install --quiet --upgrade packaging
+
+          python3 << 'EOF'
+          import base64
+          import json
+          import os
+          import re
+          import subprocess
+          import venv
+          from pathlib import Path
+          from packaging.version import Version
+
+          WORKFLOW = Path('.github/workflows/checks.yml')
+          PINNED = dict(re.findall(r'([a-z]+)==([0-9.]+)', WORKFLOW.read_text()))
+
+          def gh(*args):
+              r = subprocess.run(['gh', *args], capture_output=True, text=True)
+              return r.stdout if r.returncode == 0 else None
+
+          # A repo is in scope only if its stub calls the checks reusable; the deps it
+          # passes must be mirrored here or pyright reports phantom missing imports.
+          targets = []
+          for row in json.loads(Path('targets.json').read_text()):
+              stub = gh('api', f"repos/MikeSiLVO/{row['repo']}/contents/.github/workflows/checks.yml",
+                        '--jq', '.content')
+              if not stub:
+                  continue
+              body = base64.b64decode(stub).decode()
+              if 'workflows/checks.yml@' not in body:
+                  continue
+              m = re.search(r'^\s*deps:\s*(.+)$', body, re.M)
+              targets.append({'repo': row['repo'], 'deps': m.group(1).strip() if m else ''})
+
+          token = os.environ['GH_TOKEN']
+          results = []
+          installed = {}
+
+          for t in targets:
+              repo, work = t['repo'], Path('canary') / t['repo']
+              subprocess.run(['git', 'clone', '--depth', '1', '--quiet',
+                              f"https://x-access-token:{token}@github.com/MikeSiLVO/{repo}.git",
+                              str(work)], check=True)
+
+              env_dir = work / '.venv'
+              venv.create(env_dir, with_pip=True)
+              bin_dir = env_dir / 'bin'
+              subprocess.run([str(bin_dir / 'pip'), 'install', '--quiet', '--upgrade',
+                              'pyright', 'kodistubs', 'ruff', *t['deps'].split()], check=True)
+
+              for tool in ('ruff', 'pyright'):
+                  v = subprocess.run([str(bin_dir / tool), '--version'],
+                                     capture_output=True, text=True).stdout.strip()
+                  installed[tool] = v.split()[-1]
+
+              out = {}
+              for tool, cmd in (('ruff', ['ruff', 'check', '.']), ('pyright', ['pyright'])):
+                  r = subprocess.run([str(bin_dir / cmd[0]), *cmd[1:]], cwd=work,
+                                     capture_output=True, text=True)
+                  out[tool] = {'ok': r.returncode == 0,
+                               'tail': (r.stdout or r.stderr).strip().splitlines()[-6:]}
+              results.append({'repo': repo, **out})
+
+          behind = {t: v for t, v in installed.items()
+                    if t in PINNED and Version(v) > Version(PINNED[t])}
+          green = all(r['ruff']['ok'] and r['pyright']['ok'] for r in results)
+
+          def tick(ok):
+              return 'pass' if ok else 'FAIL'
+
+          lines = ['| Repo | ruff | pyright |', '|---|---|---|']
+          for r in results:
+              lines.append(f"| {r['repo']} | {tick(r['ruff']['ok'])} | {tick(r['pyright']['ok'])} |")
+          table = '\n'.join(lines)
+
+          detail = ''
+          for r in results:
+              for tool in ('ruff', 'pyright'):
+                  if not r[tool]['ok']:
+                      body = '\n'.join(r[tool]['tail'])
+                      detail += f"\n**{r['repo']} / {tool}**\n\n```\n{body}\n```\n"
+
+          Path('canary-report.md').write_text(table + detail)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write(f"## Lint canary\n\n{table}\n{detail}")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"green={str(green).lower()}\n")
+              f.write(f"behind={json.dumps(behind)}\n")
+              f.write(f"bump={'true' if behind else 'false'}\n")
+              for tool, v in installed.items():
+                  f.write(f"{tool}_latest={v}\n")
+          EOF
+
+      - name: Open bump PR
+        if: steps.canary.outputs.bump == 'true' && steps.canary.outputs.green == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEHIND: ${{ steps.canary.outputs.behind }}
+          RUFF: ${{ steps.canary.outputs.ruff_latest }}
+          PYRIGHT: ${{ steps.canary.outputs.pyright_latest }}
+        run: |
+          set -euo pipefail
+          git config user.name "MikeSiLVO"
+          git config user.email "mikesilvo164@gmail.com"
+          git checkout -B ci/bump-lint-pins
+
+          sed -i -E "s/ruff==[0-9.]+/ruff==${RUFF}/; s/pyright==[0-9.]+/pyright==${PYRIGHT}/" \
+            .github/workflows/checks.yml
+
+          if git diff --quiet; then
+            echo "Pins already current"
+            exit 0
+          fi
+
+          git commit -am "checks: bump lint pins to ruff ${RUFF}, pyright ${PYRIGHT}"
+          git push -f origin ci/bump-lint-pins
+
+          body=$(printf 'Canary ran every consumer against unpinned linters and all checks passed, so this bump is safe to take.\n\n%s\n\nRemember to move the `v1` tag after merging.' "$(cat canary-report.md)")
+          gh pr view ci/bump-lint-pins --json number >/dev/null 2>&1 \
+            && gh pr edit ci/bump-lint-pins --body "$body" \
+            || gh pr create --head ci/bump-lint-pins --base main \
+                 --title "checks: bump lint pins (canary green)" --body "$body"
+
+      - name: Report canary failure
+        if: steps.canary.outputs.bump == 'true' && steps.canary.outputs.green == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          title="Lint canary failing on newer linters"
+          body=$(printf 'A newer ruff or pyright breaks the checks reusable. Pins left alone.\n\n%s' "$(cat canary-report.md)")
+          existing=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
