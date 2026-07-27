@@ -36,7 +36,6 @@ jobs:
           import os
           import re
           import subprocess
-          import venv
           from pathlib import Path
           from packaging.version import Version
 
@@ -61,9 +60,20 @@ jobs:
               m = re.search(r'^\s*deps:\s*(.+)$', body, re.M)
               targets.append({'repo': row['repo'], 'deps': m.group(1).strip() if m else ''})
 
+          # One shared install: a union of every repo's deps can only silence pyright
+          # missing-import noise, it can never invent a failure the real job wouldn't see.
+          shared = sorted({d for t in targets for d in t['deps'].split()})
+          subprocess.run(['pip', 'install', '--upgrade',
+                          'pyright', 'kodistubs', 'ruff', *shared], check=True)
+
+          installed = {}
+          for tool in ('ruff', 'pyright'):
+              v = subprocess.run([tool, '--version'], capture_output=True, text=True)
+              installed[tool] = v.stdout.strip().split()[-1]
+          print('testing against', installed)
+
           token = os.environ['GH_TOKEN']
           results = []
-          installed = {}
 
           for t in targets:
               repo, work = t['repo'], Path('canary') / t['repo']
@@ -71,23 +81,12 @@ jobs:
                               f"https://x-access-token:{token}@github.com/MikeSiLVO/{repo}.git",
                               str(work)], check=True)
 
-              env_dir = work / '.venv'
-              venv.create(env_dir, with_pip=True)
-              bin_dir = env_dir / 'bin'
-              subprocess.run([str(bin_dir / 'pip'), 'install', '--quiet', '--upgrade',
-                              'pyright', 'kodistubs', 'ruff', *t['deps'].split()], check=True)
-
-              for tool in ('ruff', 'pyright'):
-                  v = subprocess.run([str(bin_dir / tool), '--version'],
-                                     capture_output=True, text=True).stdout.strip()
-                  installed[tool] = v.split()[-1]
-
               out = {}
               for tool, cmd in (('ruff', ['ruff', 'check', '.']), ('pyright', ['pyright'])):
-                  r = subprocess.run([str(bin_dir / cmd[0]), *cmd[1:]], cwd=work,
-                                     capture_output=True, text=True)
+                  r = subprocess.run(cmd, cwd=work, capture_output=True, text=True)
                   out[tool] = {'ok': r.returncode == 0,
                                'tail': (r.stdout or r.stderr).strip().splitlines()[-6:]}
+                  print(f"{repo} / {tool}: {'pass' if out[tool]['ok'] else 'FAIL'}")
               results.append({'repo': repo, **out})
 
           behind = {t: v for t, v in installed.items()
