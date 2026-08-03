@@ -31,6 +31,10 @@ Not reusable:
 - `sync-templates.yml` renders the issue templates and pushes them to every repo in
   `targets.json`. It runs when `templates/**` or `targets.json` change, or on manual dispatch
   with an optional `only=<repo>`. See **Issue templates**.
+- `lint-canary.yml` runs every consumer against unpinned ruff and pyright each week. When a
+  newer release is out it opens an issue saying whether the bump is safe; the pins in
+  `checks.yml` are edited by hand, since no token can write `.github/workflows` without
+  becoming a CI-rewrite credential for every repo.
 - `.github/dependabot.yml` does weekly grouped action updates.
 
 ---
@@ -129,7 +133,7 @@ Skins are detected from `addon.xml`, so there is no `kind` field.
 ## Secrets
 
 - `SYNC_TOKEN` (this repo). Fine-grained PAT with Contents write, scoped to the target repos.
-  Used only by `sync-templates`.
+  Used by `sync-templates` to push, and by the lint canary to clone consumers.
 - `REPO_SILVO_PAT` (each repo). Used by `deploy-to-repo`.
 - `GITHUB_TOKEN` is automatic. Stubs grant what each job needs.
 

@@ -6,8 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
   issues: write
 
 jobs:
@@ -16,9 +15,6 @@ jobs:
     steps:
       - name: Checkout central
         uses: actions/checkout@v7
-        with:
-          # GITHUB_TOKEN can't write .github/workflows; the bump PR edits checks.yml.
-          token: ${{ secrets.SYNC_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -122,47 +118,28 @@ jobs:
                   f.write(f"{tool}_latest={v}\n")
           EOF
 
-      - name: Open bump PR
-        if: steps.canary.outputs.bump == 'true' && steps.canary.outputs.green == 'true'
+      # No token here can write .github/workflows without becoming a CI-rewrite
+      # credential for every consumer, so the canary reports and a human bumps.
+      - name: Report to an issue
+        if: steps.canary.outputs.bump == 'true'
         env:
-          GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
-          BEHIND: ${{ steps.canary.outputs.behind }}
+          GH_TOKEN: ${{ github.token }}
+          GREEN: ${{ steps.canary.outputs.green }}
           RUFF: ${{ steps.canary.outputs.ruff_latest }}
           PYRIGHT: ${{ steps.canary.outputs.pyright_latest }}
         run: |
           set -euo pipefail
-          git config user.name "MikeSiLVO"
-          git config user.email "mikesilvo164@gmail.com"
-          git checkout -B ci/bump-lint-pins
+          if [ "$GREEN" = 'true' ]; then
+            title="Lint pins behind: ruff ${RUFF}, pyright ${PYRIGHT}"
+            intro="Every consumer passed on these, so the bump is safe. Edit the pins in .github/workflows/checks.yml, then move the v1 tag."
+          else
+            title="Lint canary failing: ruff ${RUFF}, pyright ${PYRIGHT}"
+            intro='A newer ruff or pyright breaks the checks reusable. Pins left alone.'
+          fi
 
-          sed -i -E "s/ruff==[0-9.]+/ruff==${RUFF}/; s/pyright==[0-9.]+/pyright==${PYRIGHT}/" \
-            .github/workflows/checks.yml
-
-          if git diff --quiet; then
-            echo "Pins already current"
+          if [ -n "$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')" ]; then
+            echo "Already reported: $title"
             exit 0
           fi
-
-          git commit -am "checks: bump lint pins to ruff ${RUFF}, pyright ${PYRIGHT}"
-          git push -f origin ci/bump-lint-pins
-
-          body=$(printf 'Canary ran every consumer against unpinned linters and all checks passed, so this bump is safe to take.\n\n%s\n\nRemember to move the `v1` tag after merging.' "$(cat canary-report.md)")
-          gh pr view ci/bump-lint-pins --json number >/dev/null 2>&1 \
-            && gh pr edit ci/bump-lint-pins --body "$body" \
-            || gh pr create --head ci/bump-lint-pins --base main \
-                 --title "checks: bump lint pins (canary green)" --body "$body"
-
-      - name: Report canary failure
-        if: steps.canary.outputs.bump == 'true' && steps.canary.outputs.green == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          title="Lint canary failing on newer linters"
-          body=$(printf 'A newer ruff or pyright breaks the checks reusable. Pins left alone.\n\n%s' "$(cat canary-report.md)")
-          existing=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body "$body"
-          else
-            gh issue create --title "$title" --body "$body"
-          fi
+          gh issue create --title "$title" \
+            --body "$(printf '%s\n\n%s' "$intro" "$(cat canary-report.md)")"
