@@ -11,7 +11,9 @@ on:
 
 jobs:
   close-translation-prs:
-    if: github.actor != 'weblate'
+    if: >-
+      github.actor != 'weblate'
+      && !contains(github.event.pull_request.labels.*.name, 'keep-open')
     runs-on: ubuntu-latest
     permissions:
       issues: write
