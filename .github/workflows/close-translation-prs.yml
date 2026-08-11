@@ -44,22 +44,38 @@ jobs:
 
             console.log('Translation PR detected, closing');
 
-            await github.rest.issues.createComment({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
-              body: [
-                "> **Automated reply** from a bot.",
-                "",
-                "A modified strings.po file was detected.",
-                "",
-                "Translations are not accepted through PRs, please use Weblate if you'd like to contribute to the translations.",
-                "",
-                "If you feel this PR was closed in error, please reply below.",
-                "",
-                "_This was posted automatically._"
-              ].join("\n")
+              per_page: 100
             });
+
+            const alreadyExplained = comments.some(c =>
+              c.user.type === 'Bot' &&
+              c.body.includes('Translations are not accepted through PRs')
+            );
+
+            if (alreadyExplained) {
+              console.log('Explanation already posted, closing without comment');
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: [
+                  "> **Automated reply** from a bot.",
+                  "",
+                  "A modified strings.po file was detected.",
+                  "",
+                  "Translations are not accepted through PRs, please use Weblate if you'd like to contribute to the translations.",
+                  "",
+                  "If you feel this PR was closed in error, please reply below.",
+                  "",
+                  "_This was posted automatically._"
+                ].join("\n")
+              });
+            }
 
             await github.rest.pulls.update({
               owner: context.repo.owner,
