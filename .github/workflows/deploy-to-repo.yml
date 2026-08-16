@@ -36,12 +36,55 @@ jobs:
           root = ET.parse('addon.xml').getroot()
           addon_id = root.get('id')
           version = root.get('version')
+          is_skin = root.find("./extension[@point='xbmc.gui.skin']") is not None
           print(f"Addon: {addon_id}")
           print(f"Version: {version}")
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"addon_id={addon_id}\n")
               f.write(f"version={version}\n")
+              f.write(f"is_skin={'true' if is_skin else 'false'}\n")
           EOF
+
+      - name: Cache TexturePacker
+        if: steps.metadata.outputs.is_skin == 'true'
+        id: tp-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/texturepacker
+          key: texturepacker-Omega-ubuntu-latest
+
+      - name: Build TexturePacker
+        if: steps.metadata.outputs.is_skin == 'true' && steps.tp-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblzo2-dev libgif-dev libpng-dev libjpeg-dev cmake g++
+          git clone --depth 1 --branch Omega --filter=blob:none --sparse \
+            https://github.com/xbmc/xbmc.git xbmc-src
+          git -C xbmc-src sparse-checkout set \
+            tools/depends/native/TexturePacker xbmc/guilib xbmc/utils cmake
+          cmake -S xbmc-src/tools/depends/native/TexturePacker/src -B tp-build \
+            -DKODI_SOURCE_DIR="$PWD/xbmc-src" -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS="-DTARGET_POSIX -DTARGET_LINUX"
+          cmake --build tp-build -j"$(nproc)"
+          mkdir -p ~/.cache/texturepacker
+          cp tp-build/TexturePacker ~/.cache/texturepacker/
+          rm -rf xbmc-src tp-build
+
+      - name: Pack textures
+        if: steps.metadata.outputs.is_skin == 'true'
+        run: |
+          TP=~/.cache/texturepacker/TexturePacker
+          chmod +x "$TP"
+          "$TP" -dupecheck -input media -output media/Textures.xbt
+          if [ -d themes ]; then
+            for t in themes/*/; do
+              "$TP" -dupecheck -input "$t" -output "media/$(basename "$t").xbt"
+            done
+            rm -rf themes
+          fi
+          find media -type f ! -name '*.xbt' -delete
+          find media -mindepth 1 -type d -empty -delete
+          ls -lh media/
 
       - name: Package addon
         id: package
