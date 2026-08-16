@@ -44,7 +44,7 @@ jobs:
 
             const logRe = /https?:\/\/\S*(paste\.kodi\.tv|xbmclogs\.com|pastebin\.com|gist\.github\.com|hastebin|termbin\.com|0bin)\S*/i;
 
-            // Scan the issue body plus human comments. Skip our own bot comments -
+            // Scan the issue body plus human comments. Skip the bot's own comments -
             // the nudge text mentions paste.kodi.tv and would falsely count as a log.
             let hasLog = logRe.test(issue.body || '');
             if (!hasLog) {

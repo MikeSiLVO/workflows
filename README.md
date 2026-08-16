@@ -89,25 +89,23 @@ jobs:
 
 ## Skin texture packing
 
-`deploy-to-repo.yml` packs a skin's `media/` into a single `media/Textures.xbt` and deletes the
-loose image files, so the zip ships the bundle and nothing else. A `themes/<name>/` folder becomes
-`media/<name>.xbt`. Add-ons are untouched: the step is skipped unless `addon.xml` declares
-`xbmc.gui.skin`.
+`deploy-to-repo.yml` packs a skin's `media/` into `media/Textures.xbt` and deletes the loose image
+files, so the zip ships the bundle and nothing else. A `themes/<name>/` folder becomes
+`media/<name>.xbt`. Add-ons are untouched; skins are detected from `addon.xml`.
 
 This is what `xbmc/repository-generator` does when it builds the official Kodi repo, so a zip from
-here behaves like a released one. Kodi reads the bundle ahead of loose files, so shipping both
-would only add weight.
+here matches a released one. Kodi reads the bundle before loose files, so there is no reason to
+ship both.
 
-The packer is built from xbmc's `Omega` branch and cached between runs. Keep it on that branch.
-Newer branches write a bundle format that Kodi before v22 cannot open, and it fails by showing no
-textures at all.
+The packer is built from xbmc's `Omega` branch and cached between runs. Keep it there. Newer
+branches write a format Kodi before v22 cannot open, and the skin then has no textures at all.
 
 Two things to expect:
 
-- The zip does not shrink. PNGs are already compressed and the bundle is not. The gain is at
-  runtime, where Kodi unpacks one bundle instead of decoding every file separately.
-- `background="true"` stops deferring a load once that texture is bundled, because the bundle is
-  checked before the background loader runs.
+- The zip does not get smaller. PNGs are already compressed and the bundle is not. The gain is at
+  runtime, where Kodi unpacks one bundle instead of decoding every file.
+- `background="true"` no longer defers a bundled texture, since the bundle is checked before the
+  background loader.
 
 ---
 
@@ -167,19 +165,27 @@ Secrets live in GitHub Actions settings, never in the repo.
 
 ## Versioning
 
-Stubs pin `@v1`. After editing a reusable, move the tag onto the new commit.
+Stubs pin `@v1`. After editing a reusable, move that tag to the new commit and add a point tag.
 
 ```
-git tag -f v1 && git push -f origin v1
+git tag v1.2.0
+git tag -f v1
+git push origin v1.2.0 && git push -f origin v1
 ```
 
-This repo is public, so any repo can call the reusables. A reusable in a private repo can only
-be called by my other private repos, which is why this one is public.
+`v1` floats so no stub needs editing. The point tag does not move, so a repo can be pinned to a
+known good version if a change breaks its deploy.
+
+`v2` is for a change consumers have to adapt to. Anything else stays on `v1`, since a new major
+means editing the `uses:` line in every stub in every repo.
+
+This repo is public, so any repo can call the reusables. A reusable in a private repo can only be
+called from repos under the same account, which is why this one is not private.
 
 ---
 
 ## Adapting it
 
-This is set up for my repos. To reuse it, change `MikeSiLVO` to your own account in every stub's
+This is set up for one specific account. To reuse it, change `MikeSiLVO` to your own in every stub's
 `uses:` line, point `deploy-to-repo` at your own target repo with a matching deploy secret, and
 create your own `SYNC_TOKEN`. The rest works unchanged.
