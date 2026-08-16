@@ -22,7 +22,7 @@ Called from a repo with `uses: MikeSiLVO/workflows/.github/workflows/<name>.yml@
 | `issue-triage.yml` | Labels a bug report `needs-info` until a log link is posted in the body or a human comment, then clears it | `issue_number`. Job needs `issues: write` |
 | `stale-issues.yml` | Closes `needs-info` issues that go quiet | Job needs `issues: write` |
 | `make-release.yml` | Zips the add-on with dev files removed and makes a GitHub release from the `addon.xml` version and `<news>` | Job needs `contents: write` |
-| `deploy-to-repo.yml` | Packages the add-on into `<repo_target>/<channel>/<id>/` and rebuilds `addons.xml` | `channel` (default `piers`), `repo_target` (default `repository.silvo`). Secret `REPO_SILVO_PAT` |
+| `deploy-to-repo.yml` | Packages the add-on into `<repo_target>/<channel>/<id>/` and rebuilds `addons.xml`. For skins it packs `media/` into a bundle first, see **Skin texture packing** | `channel` (default `piers`), `repo_target` (default `repository.silvo`). Secret `REPO_SILVO_PAT` |
 | `close-translation-prs.yml` | Closes PRs that only change `strings.po` from non-Weblate authors, except `en_gb` | `pr_number`. Job needs `issues: write` and `pull-requests: write` |
 | `sync-addon-metadata-translations.yml` | Runs xbmc's `sync_addon_metadata_translations` and opens a PR with the result | Job needs `contents: write` and `pull-requests: write` |
 
@@ -84,6 +84,30 @@ jobs:
 - **Add-on (8):** `checks`, `addon-checker`, `issue-triage`, `stale-issues`, `make-release`,
   `deploy-to-repo`, `close-translation-prs`, `sync-addon-metadata-translations`.
 - **Skin (5):** the same minus `checks`, `issue-triage`, and `stale-issues`.
+
+---
+
+## Skin texture packing
+
+`deploy-to-repo.yml` packs a skin's `media/` into a single `media/Textures.xbt` and deletes the
+loose image files, so the zip ships the bundle and nothing else. A `themes/<name>/` folder becomes
+`media/<name>.xbt`. Add-ons are untouched: the step is skipped unless `addon.xml` declares
+`xbmc.gui.skin`.
+
+This is what `xbmc/repository-generator` does when it builds the official Kodi repo, so a zip from
+here behaves like a released one. Kodi reads the bundle ahead of loose files, so shipping both
+would only add weight.
+
+The packer is built from xbmc's `Omega` branch and cached between runs. Keep it on that branch.
+Newer branches write a bundle format that Kodi before v22 cannot open, and it fails by showing no
+textures at all.
+
+Two things to expect:
+
+- The zip does not shrink. PNGs are already compressed and the bundle is not. The gain is at
+  runtime, where Kodi unpacks one bundle instead of decoding every file separately.
+- `background="true"` stops deferring a load once that texture is bundled, because the bundle is
+  checked before the background loader runs.
 
 ---
 
