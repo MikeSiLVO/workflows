@@ -1,0 +1,14 @@
+name: Make Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    if: github.repository == 'OWNER/REPO'
+    permissions:
+      contents: write
+    uses: OWNER/workflows/.github/workflows/make-release.yml@v1
+    secrets: inherit

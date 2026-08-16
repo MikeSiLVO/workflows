@@ -47,7 +47,7 @@ jobs:
       - name: Checkout target
         uses: actions/checkout@v7
         with:
-          repository: MikeSiLVO/${{ matrix.target.repo }}
+          repository: ${{ github.repository_owner }}/${{ matrix.target.repo }}
           token: ${{ secrets.SYNC_TOKEN }}
           path: target
 
@@ -81,11 +81,11 @@ jobs:
           done
           render "templates/bug/${kind}.yml" > "$dest/bug.yml"
           cd target
-          git config user.name "MikeSiLVO"
-          git config user.email "mikesilvo164@gmail.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ -n "$(git status --porcelain)" ]; then
             git add -A
-            git commit -m "Sync issue templates from MikeSiLVO/workflows"
+            git commit -m "Sync issue templates from ${{ github.repository }}"
             git push
             echo "Pushed template update to ${{ matrix.target.repo }}"
           else

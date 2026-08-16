@@ -9,7 +9,7 @@ on:
         type: string
         default: piers
       repo_target:
-        description: 'Target repository name under MikeSiLVO/'
+        description: 'Target repository name under the same account'
         required: false
         type: string
         default: repository.silvo
@@ -53,11 +53,15 @@ jobs:
           path: ~/.cache/texturepacker
           key: texturepacker-Omega-ubuntu-latest
 
+      - name: Install packer libraries
+        if: steps.metadata.outputs.is_skin == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblzo2-dev libgif-dev libpng-dev libjpeg-dev
+
       - name: Build TexturePacker
         if: steps.metadata.outputs.is_skin == 'true' && steps.tp-cache.outputs.cache-hit != 'true'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y liblzo2-dev libgif-dev libpng-dev libjpeg-dev cmake g++
           git clone --depth 1 --branch Omega --filter=blob:none --sparse \
             https://github.com/xbmc/xbmc.git xbmc-src
           git -C xbmc-src sparse-checkout set \
@@ -136,12 +140,13 @@ jobs:
       - name: Clone target repository
         env:
           TARGET: ${{ inputs.repo_target }}
-          PAT: ${{ secrets.REPO_SILVO_PAT }}
+          OWNER: ${{ github.repository_owner }}
+          PAT: ${{ secrets.DEPLOY_TOKEN }}
         run: |
-          git clone "https://x-access-token:${PAT}@github.com/MikeSiLVO/${TARGET}.git" repo-silvo
-          cd repo-silvo
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
+          git clone "https://x-access-token:${PAT}@github.com/${OWNER}/${TARGET}.git" target-repo
+          cd target-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Deploy to channel
         env:
@@ -149,7 +154,7 @@ jobs:
           ZIP_NAME: ${{ steps.package.outputs.zip_name }}
           CHANNEL: ${{ inputs.channel }}
         run: |
-          DEST="repo-silvo/${CHANNEL}/${ADDON_ID}"
+          DEST="target-repo/${CHANNEL}/${ADDON_ID}"
           mkdir -p "$DEST"
           rm -f "$DEST"/*.zip
           cp "$ZIP_NAME" "$DEST/"
@@ -165,7 +170,7 @@ jobs:
 
       - name: Generate repository metadata
         run: |
-          cd repo-silvo
+          cd target-repo
           python _repo_generator.py
 
       - name: Commit and push
@@ -173,7 +178,7 @@ jobs:
           ADDON_ID: ${{ steps.metadata.outputs.addon_id }}
           VERSION: ${{ steps.metadata.outputs.version }}
         run: |
-          cd repo-silvo
+          cd target-repo
           git add .
           if git diff --staged --quiet; then
             echo "No changes to commit"

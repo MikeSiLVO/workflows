@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: ''
+      kodistubs:
+        description: kodistubs version; 21.0.0 is the newest published
+        required: false
+        type: string
+        default: '21.0.0'
 
 jobs:
   checks:
@@ -18,7 +23,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install dependencies
-        run: pip install pyright==1.1.411 kodistubs==21.0.0 ruff==0.16.1 ${{ inputs.deps }}
+        run: pip install pyright==1.1.411 kodistubs==${{ inputs.kodistubs }} ruff==0.16.1 ${{ inputs.deps }}
       - name: Ruff
         run: ruff check .
       - name: Pyright

@@ -25,6 +25,7 @@ jobs:
         id: canary
         env:
           GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
           pip install --quiet --upgrade packaging
@@ -38,6 +39,7 @@ jobs:
           from pathlib import Path
           from packaging.version import Version
 
+          OWNER = os.environ['OWNER']
           WORKFLOW = Path('.github/workflows/checks.yml')
           PINNED = dict(re.findall(r'([a-z]+)==([0-9.]+)', WORKFLOW.read_text()))
 
@@ -49,7 +51,7 @@ jobs:
           # passes must be mirrored here or pyright reports phantom missing imports.
           targets = []
           for row in json.loads(Path('targets.json').read_text()):
-              stub = gh('api', f"repos/MikeSiLVO/{row['repo']}/contents/.github/workflows/checks.yml",
+              stub = gh('api', f"repos/{OWNER}/{row['repo']}/contents/.github/workflows/checks.yml",
                         '--jq', '.content')
               if not stub:
                   continue
@@ -77,7 +79,7 @@ jobs:
           for t in targets:
               repo, work = t['repo'], Path('canary') / t['repo']
               subprocess.run(['git', 'clone', '--depth', '1', '--quiet',
-                              f"https://x-access-token:{token}@github.com/MikeSiLVO/{repo}.git",
+                              f"https://x-access-token:{token}@github.com/{OWNER}/{repo}.git",
                               str(work)], check=True)
 
               out = {}
