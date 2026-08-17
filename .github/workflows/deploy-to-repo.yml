@@ -48,7 +48,7 @@ jobs:
       - name: Cache TexturePacker
         if: steps.metadata.outputs.is_skin == 'true'
         id: tp-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/texturepacker
           key: texturepacker-Omega-ubuntu-latest
