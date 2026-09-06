@@ -19,11 +19,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # the linter pins live in this repo, not the caller's, so fetch just that file
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .lint-pins
+          sparse-checkout: .github/requirements-lint.txt
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - name: Install dependencies
-        run: pip install pyright==1.1.411 kodistubs==${{ inputs.kodistubs }} ruff==0.16.3 ${{ inputs.deps }}
+        run: |
+          pip install -r .lint-pins/.github/requirements-lint.txt \
+            kodistubs==${{ inputs.kodistubs }} ${{ inputs.deps }}
       - name: Ruff
         run: ruff check .
       - name: Pyright

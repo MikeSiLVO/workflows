@@ -9,3 +9,13 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: "ci"
+
+  - package-ecosystem: pip
+    directory: /.github
+    schedule:
+      interval: weekly
+    groups:
+      linters:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
