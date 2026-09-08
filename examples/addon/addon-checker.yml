@@ -11,6 +11,6 @@ on:
 jobs:
   addon-checker:
     if: github.repository == 'OWNER/REPO'
-    uses: OWNER/workflows/.github/workflows/addon-checker.yml@v1
+    uses: OWNER/workflows/.github/workflows/addon-checker.yml@v2.0.0
     with:
       kodi_branch: piers

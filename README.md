@@ -13,11 +13,11 @@ pattern.
 
 ## Reusable workflows
 
-Called from a repo with `uses: MikeSiLVO/workflows/.github/workflows/<name>.yml@v1`.
+Called from a repo with `uses: MikeSiLVO/workflows/.github/workflows/<name>.yml@v2.0.0`.
 
 | Workflow | What it does | Inputs and secrets |
 |---|---|---|
-| `checks.yml` | `ruff check` and `pyright` | `deps` for extra pip packages, `kodistubs` version (default `21.0.0`) |
+| `checks.yml` | `ruff check` and `pyright`, at the versions pinned in `.github/requirements-lint.txt` here | `deps` for extra pip packages, `kodistubs` version (default `21.0.0`) |
 | `addon-checker.yml` | Runs `kodi-addon-checker`. Copies the add-on into a folder named its id first, so the id check passes | `kodi_branch`, the Kodi branch to check against (default `piers`) |
 | `issue-triage.yml` | Labels a bug report `needs-info` until a log link is posted in the body or a human comment, then clears it | `issue_number`. Job needs `issues: write` |
 | `needs-info.yml` | Comments a nudge when the `needs-info` label is added | `message` (required), `label` (default `needs-info`). Job needs `issues: write` |
@@ -32,18 +32,19 @@ Not reusable:
 - `sync-templates.yml` renders the issue templates and pushes them to every repo in
   `targets.json`. It runs when `templates/**` or `targets.json` change, or on manual dispatch
   with an optional `only=<repo>`. See **Issue templates**.
-- `lint-canary.yml` runs every consumer against unpinned ruff and pyright each week. When a
-  newer release is out it opens an issue saying whether the bump is safe; the pins in
-  `checks.yml` are edited by hand, since no token can write `.github/workflows` without
-  becoming a CI-rewrite credential for every repo.
-- `.github/dependabot.yml` does weekly grouped action updates.
+- `.github/requirements-lint.txt` holds the ruff and pyright pins. `checks.yml` fetches that one
+  file from here at the tag the stub pins, so a repo lints against the versions that belong to its
+  release and not whatever its own tree holds. kodistubs stays a `checks.yml` input, so a consumer
+  can override that one.
+- `.github/dependabot.yml` does weekly grouped updates, one group for the actions and one for the
+  linter pins.
 
 ---
 
 ## Using it (stubs)
 
 Each repo has small stub workflows in `.github/workflows/` that set the triggers, guard on the
-repo, and call the reusable at `@v1`.
+repo, and call the reusable at an exact tag.
 
 Simplest:
 
@@ -55,7 +56,7 @@ on:
 jobs:
   checks:
     if: github.repository == 'MikeSiLVO/<repo>'
-    uses: MikeSiLVO/workflows/.github/workflows/checks.yml@v1
+    uses: MikeSiLVO/workflows/.github/workflows/checks.yml@v2.0.0
 ```
 
 With inputs and secrets:
@@ -68,13 +69,15 @@ on:
 jobs:
   deploy:
     if: github.repository == 'MikeSiLVO/<repo>'
-    uses: MikeSiLVO/workflows/.github/workflows/deploy-to-repo.yml@v1
+    uses: MikeSiLVO/workflows/.github/workflows/deploy-to-repo.yml@v2.0.0
     with:
       channel: piers
     secrets: inherit
 ```
 
-- Pin `@v1`, not `@main`. An unfinished edit to `main` would otherwise change live CI.
+- Pin an exact `x.y.z` tag, never `@main` or a moving major. The stub line stays as it is while
+  the commit behind such a ref changes, so the next run is different code and no PR in the repo
+  says so. See **Versioning**.
 - The `github.repository` guard stops forks from running it.
 - `secrets: inherit` passes the repo's own secrets, like `DEPLOY_TOKEN`, through.
 - Any needed permissions are set on the calling job in the stub.
@@ -173,7 +176,7 @@ Two personal access tokens, plus the automatic one.
 
 | Secret | Lives in | Grants | Used by |
 |---|---|---|---|
-| `SYNC_TOKEN` | this repo | Contents write on every repo in `targets.json` | `sync-templates` to push rendered templates, `lint-canary` to read consumer files |
+| `SYNC_TOKEN` | this repo | Contents write on every repo in `targets.json` | `sync-templates` to push rendered templates |
 | `DEPLOY_TOKEN` | each add-on repo | Contents write on the deploy target repo | `deploy-to-repo` to commit the packaged zip |
 | `GITHUB_TOKEN` | automatic | whatever the stub's `permissions:` block grants | everything else |
 
@@ -219,19 +222,26 @@ gh api repos/OWNER/REPO/actions/secrets --jq '.secrets[] | "\(.name)  \(.updated
 
 ## Versioning
 
-Stubs pin `@v1`. After editing a reusable, move that tag to the new commit and add a point tag.
+Tags are immutable. A release is a new `x.y.z`, and no tag is ever moved onto a later commit.
 
 ```
-git tag v1.2.0
-git tag -f v1
-git push origin v1.2.0 && git push -f origin v1
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
-`v1` floats so no stub needs editing. The point tag does not move, so a repo can be pinned to a
-known good version if a change breaks its deploy.
+Nothing picks it up until a consumer changes its `uses:` line, and Dependabot does that part.
+Its `github-actions` ecosystem reads reusable `uses:` refs, so each repo gets a PR for the new
+tag and its own CI is the gate. With `patterns: ["*"]` all of a repo's stubs move in one PR.
 
-`v2` is for a change consumers have to adapt to. Anything else stays on `v1`, since a new major
-means editing the `uses:` line in every stub in every repo.
+A moving `v1` would do the opposite: force-pushing it fires an untested change into every
+consumer at once, including adopters whose repos cannot be tested from here. Raise the major for
+a change consumers have to adapt to. Either way the tag a repo is on keeps working, so a repo
+whose deploy a release breaks just stays where it is.
+
+`uses:` takes no expressions, so each stub carries the tag literally. Grouping the Dependabot
+updates is what keeps that one review instead of eight.
+
+`v1` is frozen at its last release, `v1.3.0`, for anything still pinned to it.
 
 This repo has to be public, because the consumers are.
 
@@ -257,7 +267,7 @@ This is set up for one specific account. To run the same pattern on another:
 3. Create `SYNC_TOKEN` here, scoped to the repos listed in `targets.json`.
 4. For each add-on repo, copy a stub set from `examples/`, add a `targets.json` row, and add
    `DEPLOY_TOKEN`.
-5. Tag `v1` so the stubs resolve.
+5. Tag `v1.0.0` and pin the stubs to it.
 
 The reusables take the account from `github.repository_owner`, so nothing here needs renaming. The
 account appears only in each stub's `if: github.repository ==` guard, which is what stops a fork

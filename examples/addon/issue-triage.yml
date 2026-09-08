@@ -17,7 +17,7 @@ jobs:
     if: github.repository == 'OWNER/REPO'
     permissions:
       issues: write
-    uses: OWNER/workflows/.github/workflows/issue-triage.yml@v1
+    uses: OWNER/workflows/.github/workflows/issue-triage.yml@v2.0.0
     with:
       issue_number: ${{ github.event.inputs.issue_number }}
     secrets: inherit

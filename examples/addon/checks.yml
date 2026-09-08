@@ -11,4 +11,4 @@ on:
 jobs:
   checks:
     if: github.repository == 'OWNER/REPO'
-    uses: OWNER/workflows/.github/workflows/checks.yml@v1
+    uses: OWNER/workflows/.github/workflows/checks.yml@v2.0.0

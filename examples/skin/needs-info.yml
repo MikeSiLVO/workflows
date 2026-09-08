@@ -9,7 +9,7 @@ jobs:
     if: github.repository == 'OWNER/REPO'
     permissions:
       issues: write
-    uses: OWNER/workflows/.github/workflows/needs-info.yml@v1
+    uses: OWNER/workflows/.github/workflows/needs-info.yml@v2.0.0
     with:
       message: |
         > **Automated reply** from a bot.

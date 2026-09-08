@@ -10,5 +10,5 @@ jobs:
     if: github.repository == 'OWNER/REPO'
     permissions:
       contents: write
-    uses: OWNER/workflows/.github/workflows/make-release.yml@v1
+    uses: OWNER/workflows/.github/workflows/make-release.yml@v2.0.0
     secrets: inherit
