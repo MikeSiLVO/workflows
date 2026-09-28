@@ -19,6 +19,48 @@ jobs:
           python-version: '3.11'
       - name: Install kodi-addon-checker
         run: pip install kodi-addon-checker
+
+      - name: Week key
+        id: week
+        run: echo "key=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Kodi repo indexes
+        id: index-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/kodi-addon-indexes
+          key: kodi-addon-indexes-${{ steps.week.outputs.key }}
+          restore-keys: kodi-addon-indexes-
+
+      - name: Fetch Kodi repo indexes
+        if: steps.index-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 - <<'EOF'
+          import time
+          from pathlib import Path
+
+          import requests
+          from kodi_addon_checker import ValidKodiVersions
+          from kodi_addon_checker.check_addon import ROOT_URL
+
+          cache = Path.home() / ".cache/kodi-addon-indexes"
+          cache.mkdir(parents=True, exist_ok=True)
+          for branch in ValidKodiVersions:
+              for wait in (0, 15, 60):
+                  time.sleep(wait or 2)
+                  try:
+                      response = requests.get(ROOT_URL.format(branch=branch), timeout=30)
+                      response.raise_for_status()
+                  except requests.RequestException as error:
+                      print(f"{branch}: {error}")
+                      continue
+                  (cache / f"{branch}.xml.gz").write_bytes(response.content)
+                  print(f"{branch}: {len(response.content)} bytes")
+                  break
+              else:
+                  print(f"{branch}: keeping cached copy" if (cache / f"{branch}.xml.gz").exists()
+                        else f"{branch}: no copy, the checker fetches it")
+          EOF
       - name: Run addon-checker
         env:
           BRANCH: ${{ inputs.kodi_branch }}
@@ -39,4 +81,37 @@ jobs:
             --exclude='__pycache__' --exclude='.mypy_cache' --exclude='.ruff_cache' --exclude='.pytest_cache' \
             --exclude='typings' --exclude='tests' --exclude='docs' --exclude='DOCS' --exclude='xbmcgui' \
             ./ "$work/$id/"
-          kodi-addon-checker --branch="$BRANCH" "$work/$id"
+          python3 - --branch="$BRANCH" "$work/$id" <<'EOF'
+          import sys
+          from pathlib import Path
+
+          import requests
+          from kodi_addon_checker.__main__ import main
+          from kodi_addon_checker.addons.Repository import Repository
+
+          cache = Path.home() / ".cache/kodi-addon-indexes"
+
+
+          class LocalIndex(requests.adapters.BaseAdapter):
+              def __init__(self, fallback):
+                  super().__init__()
+                  self.fallback = fallback
+
+              def send(self, request, **kwargs):
+                  local = cache / f"{request.url.split('/')[-2]}.xml.gz"
+                  if not local.is_file():
+                      return self.fallback.send(request, **kwargs)
+                  response = requests.Response()
+                  response.status_code = 200
+                  response._content = local.read_bytes()
+                  response.url = request.url
+                  response.request = request
+                  return response
+
+              def close(self):
+                  self.fallback.close()
+
+
+          Repository._session.mount("http://mirrors.kodi.tv/", LocalIndex(Repository._adapter))
+          sys.exit(main())
+          EOF

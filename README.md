@@ -18,7 +18,7 @@ Called from a repo with `uses: MikeSiLVO/workflows/.github/workflows/<name>.yml@
 | Workflow | What it does | Inputs and secrets |
 |---|---|---|
 | `checks.yml` | `ruff check` and `pyright`, at the versions pinned in `.github/requirements-lint.txt` here | `deps` for extra pip packages, `kodistubs` version (default `21.0.0`) |
-| `addon-checker.yml` | Runs `kodi-addon-checker`. Copies the add-on into a folder named its id first, so the id check passes | `kodi_branch`, the Kodi branch to check against (default `piers`) |
+| `addon-checker.yml` | Runs `kodi-addon-checker`. Copies the add-on into a folder named its id first, so the id check passes. The Kodi repo add-on lists it checks versions against are cached for a week | `kodi_branch`, the Kodi branch to check against (default `piers`) |
 | `issue-triage.yml` | Labels a bug report `needs-info` until a log link is posted in the body or a human comment, then clears it | `issue_number`. Job needs `issues: write` |
 | `needs-info.yml` | Comments a nudge when the `needs-info` label is added | `message` (required), `label` (default `needs-info`). Job needs `issues: write` |
 | `stale-issues.yml` | Closes `needs-info` issues that go quiet | `only_labels`, `days_before_stale`, `days_before_close`, `stale_message`, `close_message`. Job needs `issues: write` |
