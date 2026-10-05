@@ -1,4 +1,4 @@
 # Linter pins for the checks reusable. Dependabot watches this file.
 # kodistubs is not here: it stays a workflow_call input so a consumer can override it.
-pyright==1.1.411
-ruff==0.16.6
+pyright==1.1.414
+ruff==0.16.10
