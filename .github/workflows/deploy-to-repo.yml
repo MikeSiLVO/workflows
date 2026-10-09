@@ -161,12 +161,19 @@ jobs:
           for file in addon.xml changelog.txt; do
             [ -f "$file" ] && cp "$file" "$DEST/"
           done
-          for asset in icon.png fanart.jpg; do
-            if [ -f "resources/$asset" ]; then cp "resources/$asset" "$DEST/$asset";
-            elif [ -f "resources/media/$asset" ]; then cp "resources/media/$asset" "$DEST/$asset";
-            elif [ -f "$asset" ]; then cp "$asset" "$DEST/";
-            fi
-          done
+          python3 - "$DEST" << 'EOF'
+          import shutil
+          import sys
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          dest = Path(sys.argv[1])
+          for el in ET.parse('addon.xml').getroot().iterfind('./extension/assets/*'):
+              rel = (el.text or '').strip()
+              if rel and Path(rel).is_file():
+                  (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copy2(rel, dest / rel)
+          EOF
 
       - name: Generate repository metadata
         run: |
