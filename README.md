@@ -26,6 +26,7 @@ Called from a repo with `uses: MikeSiLVO/workflows/.github/workflows/<name>.yml@
 | `deploy-to-repo.yml` | Packages the add-on into `<repo_target>/<channel>/<id>/` and rebuilds `addons.xml`. For skins it packs `media/` into a bundle first, see **Skin texture packing** | `channel` (default `piers`), `repo_target` (default `repository.silvo`). Secret `DEPLOY_TOKEN`. The target repo must contain `_repo_generator.py` |
 | `close-translation-prs.yml` | Closes PRs that only change `strings.po` from non-Weblate authors, except `en_gb` | `pr_number`. Job needs `issues: write` and `pull-requests: write` |
 | `sync-addon-metadata-translations.yml` | Runs xbmc's `sync_addon_metadata_translations` and opens a PR with the result | Job needs `contents: write` and `pull-requests: write` |
+| `kdk.yml` | Validates a skin with kdk, the version vendored in `vendor/kdk/` here, on Linux so file paths are checked case-sensitively. Errors fail the job; warnings show as annotations. The skin's `.kdk.json` applies | `strict`, fail on warnings too (default `false`) |
 
 Not reusable:
 
@@ -38,6 +39,17 @@ Not reusable:
   can override that one.
 - `.github/dependabot.yml` does weekly grouped updates, one group for the actions and one for the
   linter pins.
+- `vendor/kdk/` holds the kdk wheel `kdk.yml` installs, with its dependencies (lxml for cp312, rich
+  and its pure-Python dependencies) and `SHA256SUMS`. Dependabot does not see it. To move to a
+  newer kdk, build the wheel from a pushed kdk commit, keep exactly one kdk wheel in the folder and
+  regenerate the checksums:
+
+  ```
+  git -C <kdk> archive <sha> | tar -x -C <tmp>
+  sed -i 's/^__version__ = "X.Y.Z"$/__version__ = "X.Y.Z+<sha7>"/' <tmp>/src/kdk/__init__.py
+  pip wheel --no-deps -w vendor/kdk <tmp>
+  cd vendor/kdk && sha256sum *.whl > SHA256SUMS
+  ```
 
 ---
 
@@ -95,10 +107,10 @@ Ready-to-copy sets live in `examples/addon/` and `examples/skin/`. Copy one into
 
 - **Add-on (8):** `checks`, `addon-checker`, `issue-triage`, `stale-issues`, `make-release`,
   `deploy-to-repo`, `close-translation-prs`, `sync-addon-metadata-translations`.
-- **Skin (6):** `needs-info`, `stale-issues`, `make-release`, `deploy-to-repo`,
+- **Skin (7):** `kdk`, `needs-info`, `stale-issues`, `make-release`, `deploy-to-repo`,
   `close-translation-prs`, `sync-addon-metadata-translations`.
 
-A skin has no Python, so it drops `checks`. Its bugs are visual rather than log-based, so it uses
+A skin has no Python, so it drops `checks` and gets `kdk` instead. Its bugs are visual rather than log-based, so it uses
 `needs-info` in place of `issue-triage`, which exists to chase a log link. `addon-checker` validates
 skins too and can be added, but a skin depending on a beta of another add-on will fail it on the
 version check until that dependency ships.

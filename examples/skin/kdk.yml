@@ -1,0 +1,15 @@
+name: kdk skin validate
+
+on:
+  push:
+    paths-ignore:
+      - '**/*.po'
+  pull_request:
+    paths-ignore:
+      - '**/*.po'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    if: github.repository == 'OWNER/REPO'
+    uses: OWNER/workflows/.github/workflows/kdk.yml@v2.3.0

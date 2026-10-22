@@ -1,0 +1,35 @@
+name: kdk skin validate (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      strict:
+        description: Fail on warnings as well as errors
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # kdk 3.x is not on PyPI; its wheels are vendored in this repo
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .kdk-vendor
+          sparse-checkout: vendor/kdk
+      # the vendored lxml wheel is cp312
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install kdk
+        run: |
+          (cd .kdk-vendor/vendor/kdk && sha256sum -c --quiet SHA256SUMS)
+          python -m venv "$RUNNER_TEMP/kdk"
+          "$RUNNER_TEMP/kdk/bin/pip" install -q --no-index --no-deps .kdk-vendor/vendor/kdk/*.whl
+          rm -rf .kdk-vendor
+      - name: Validate
+        run: '"$RUNNER_TEMP/kdk/bin/kdk" validate --github ${{ inputs.strict && ''--strict'' || '''' }} .'
