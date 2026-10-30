@@ -6,5 +6,6 @@
   { "repo": "service.watchkeeper", "name": "Watchkeeper", "tid": "388774", "version_eg": "0.2.0" },
   { "repo": "skin.amber", "name": "Amber", "tid": "389089", "version_eg": "5.0.0" },
   { "repo": "script.module.imdbratings", "name": "IMDb Ratings", "tid": "357232", "version_eg": "1.0.0" },
-  { "repo": "weather.nws", "name": "NWS Weather", "tid": "389200", "version_eg": "1.0.0" }
+  { "repo": "weather.nws", "name": "NWS Weather", "tid": "389200", "version_eg": "1.0.0" },
+  { "repo": "service.trakt.relay", "name": "Trakt Relay", "tid": "389542", "version_eg": "1.0.0" }
 ]
