@@ -1,0 +1,2 @@
+# pytest pin for the checks reusable's tests job. Dependabot watches this file.
+pytest==9.1.1

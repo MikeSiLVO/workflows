@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: '21.0.0'
+      tests:
+        description: Also run pytest over tests/ on Python 3.12, in its own job
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   checks:
@@ -38,3 +43,23 @@ jobs:
         run: ruff check .
       - name: Pyright
         run: pyright
+
+  tests:
+    if: inputs.tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .test-pins
+          sparse-checkout: .github/requirements-test.txt
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install pytest
+        run: pip install -r .test-pins/.github/requirements-test.txt
+      - name: Pytest
+        run: python -m pytest tests -q

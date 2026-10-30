@@ -17,7 +17,7 @@ Called from a repo with `uses: MikeSiLVO/workflows/.github/workflows/<name>.yml@
 
 | Workflow | What it does | Inputs and secrets |
 |---|---|---|
-| `checks.yml` | `ruff check` and `pyright`, at the versions pinned in `.github/requirements-lint.txt` here | `deps` for extra pip packages, `kodistubs` version (default `21.0.0`) |
+| `checks.yml` | `ruff check` and `pyright`, at the versions pinned in `.github/requirements-lint.txt` here. With `tests`, also `pytest tests` on Python 3.12 in its own job, pytest pinned in `.github/requirements-test.txt` | `deps` for extra pip packages, `kodistubs` version (default `21.0.0`), `tests` (default `false`) |
 | `addon-checker.yml` | Runs `kodi-addon-checker`. Copies the add-on into a folder named its id first, so the id check passes. The Kodi repo add-on lists it checks versions against are cached for a week | `kodi_branch`, the Kodi branch to check against (default `piers`) |
 | `issue-triage.yml` | Labels a bug report `needs-info` until a log link is posted in the body or a human comment, then clears it | `issue_number`. Job needs `issues: write` |
 | `needs-info.yml` | Comments a nudge when the `needs-info` label is added | `message` (required), `label` (default `needs-info`). Job needs `issues: write` |
@@ -33,12 +33,8 @@ Not reusable:
 - `sync-templates.yml` renders the issue templates and pushes them to every repo in
   `targets.json`. It runs when `templates/**` or `targets.json` change, or on manual dispatch
   with an optional `only=<repo>`. See **Issue templates**.
-- `.github/requirements-lint.txt` holds the ruff and pyright pins. `checks.yml` fetches that one
-  file from here at the tag the stub pins, so a repo lints against the versions that belong to its
-  release and not whatever its own tree holds. kodistubs stays a `checks.yml` input, so a consumer
-  can override that one.
-- `.github/dependabot.yml` does weekly grouped updates, one group for the actions and one for the
-  linter pins.
+- `.github/requirements-lint.txt` holds the ruff and pyright pins, `.github/requirements-test.txt` the pytest pin. `checks.yml` fetches each from here at the tag the stub pins, so a repo lints and tests against the versions that belong to its release and not whatever its own tree holds. kodistubs stays a `checks.yml` input, so a consumer can override that one.
+- `.github/dependabot.yml` does weekly grouped updates, one group for the actions and one for the Python pins.
 - `vendor/kdk/` holds the kdk wheel `kdk.yml` installs, with its dependencies (lxml for cp312, rich
   and its pure-Python dependencies) and `SHA256SUMS`. Dependabot does not see it. To move to a
   newer kdk, build the wheel from a pushed kdk commit, keep exactly one kdk wheel in the folder and
