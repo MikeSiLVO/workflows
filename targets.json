@@ -7,5 +7,6 @@
   { "repo": "skin.amber", "name": "Amber", "tid": "389089", "version_eg": "5.0.0" },
   { "repo": "script.module.imdbratings", "name": "IMDb Ratings", "tid": "357232", "version_eg": "1.0.0" },
   { "repo": "weather.nws", "name": "NWS Weather", "tid": "389200", "version_eg": "1.0.0" },
-  { "repo": "service.trakt.relay", "name": "Trakt Relay", "tid": "389542", "version_eg": "1.0.0" }
+  { "repo": "service.trakt.relay", "name": "Trakt Relay", "tid": "389542", "version_eg": "1.0.0" },
+  { "repo": "service.skiptro", "name": "Skiptro", "tid": "384433", "version_eg": "0.3.5" }
 ]
