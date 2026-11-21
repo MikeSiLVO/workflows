@@ -146,13 +146,15 @@ templates/
     config.yml   contact link, blank issues off
     feature.yml  feature request
   bug/
-    addon.yml    bug report for add-ons, log required
-    skin.yml     bug report for skins, visual, "where in the skin", log optional
+    addon.yml      bug report for add-ons, log required
+    skin.yml       bug report for skins, visual, "where in the skin", log optional
+    validator.yml  bug report for kdk and KodiDevKit: crash, hang, CLI or GUI problem
+  extra/
+    validator/
+      report.yml   a check that reports what isn't a problem, or misses one that is
 ```
 
-For each repo the sync checks it out, picks add-on or skin by looking for `point="xbmc.gui.skin"`
-in `addon.xml`, renders `common/*` plus the matching `bug/<kind>.yml`, and pushes only if it
-changed. Each placeholder is filled from the `targets.json` row.
+For each repo the sync checks it out and takes the row's `kind`, or without one picks add-on or skin by looking for `point="xbmc.gui.skin"` in `addon.xml`. It renders `common/*`, the matching `bug/<kind>.yml` as `bug.yml` and any `extra/<kind>/*.yml`, and pushes only if something changed. Each placeholder is filled from the `targets.json` row.
 
 - `{{ADDON_NAME}}` from `name`
 - `{{FORUM_TID}}` from `tid`
@@ -174,7 +176,7 @@ changed. Each placeholder is filled from the `targets.json` row.
 4. Once per repo, add a `DEPLOY_TOKEN` secret for deploy, and turn on Settings > Actions >
    General > "Allow GitHub Actions to create and approve pull requests" for the translation sync.
 
-Skins are detected from `addon.xml`, so there is no `kind` field.
+Add-ons and skins are detected from `addon.xml`. A repo without one, like kdk and KodiDevKit, sets `"kind": "validator"` in its row and needs only steps 2 and 3.
 
 ---
 

@@ -56,15 +56,16 @@ jobs:
           ADDON_NAME: ${{ matrix.target.name }}
           FORUM_TID: ${{ matrix.target.tid }}
           VERSION_EG: ${{ matrix.target.version_eg }}
+          KIND: ${{ matrix.target.kind }}
         run: |
           set -euo pipefail
 
-          # Skins declare the xbmc.gui.skin extension point; everything else is an add-on.
-          kind=addon
-          if grep -q 'point="xbmc.gui.skin"' target/addon.xml 2>/dev/null; then
+          # rows without kind: skins declare the xbmc.gui.skin extension point, the rest are add-ons
+          kind="${KIND:-addon}"
+          if [ -z "$KIND" ] && grep -q 'point="xbmc.gui.skin"' target/addon.xml 2>/dev/null; then
             kind=skin
           fi
-          echo "Detected kind for ${{ matrix.target.repo }}: $kind"
+          echo "Kind for ${{ matrix.target.repo }}: $kind"
 
           render() {
             sed -e "s|{{ADDON_NAME}}|${ADDON_NAME}|g" \
@@ -80,6 +81,11 @@ jobs:
             render "$f" > "$dest/$(basename "$f")"
           done
           render "templates/bug/${kind}.yml" > "$dest/bug.yml"
+          for f in templates/extra/"${kind}"/*.yml; do
+            if [ -e "$f" ]; then
+              render "$f" > "$dest/$(basename "$f")"
+            fi
+          done
           cd target
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
